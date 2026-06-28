@@ -141,12 +141,18 @@ Upskilling-Recommender-RAG/
 ├── src/learning_rec/
 │   ├── config.py                  # env-driven settings
 │   ├── ingest.py                  # catalogue -> FAISS
-│   ├── recommender.py             # employee -> top-5 with reasons
-│   └── prompts.py                 # LLM system prompt
+│   ├── recommender.py             # retrieve(), rerank_with_llm(), recommend()
+│   ├── prompts.py                 # LLM system prompts
+│   └── eval/
+│       ├── ground_truth.py        # rule-based relevance labels
+│       ├── metrics.py             # recall@k, MRR, precision@k
+│       ├── judge.py               # LLM-as-judge
+│       └── pipeline.py            # orchestrates an eval run
 ├── scripts/
 │   ├── generate_synthetic_data.py # rebuild the demo dataset
 │   ├── build_index.py             # CLI for ingest
-│   └── recommend.py               # CLI for batch recommendations
+│   ├── recommend.py               # CLI for batch recommendations
+│   └── run_eval.py                # CLI for evaluation
 ├── output/                        # recommendation JSON (gitignored)
 ├── vector_store/                  # FAISS artifacts (gitignored)
 ├── requirements.txt
@@ -164,6 +170,43 @@ the two CSVs with your own, keeping the columns:
 
 `keywords` and `skills` may be semicolon-separated, comma-separated, or
 Python-literal lists — `ingest.to_list()` normalizes them.
+
+## Evaluation
+
+The eval harness measures the recommender at two stages independently:
+
+- **Retrieval** — does dense FAISS search surface the relevant items at all?
+  Metrics: `recall@10`, `precision@10`, `mrr@10`.
+- **End-to-end** — does the LLM rerank stage pick good items? Metric:
+  `precision@5` against the ground-truth labels, plus an optional
+  **LLM-as-judge** that rates each recommendation on a 4-point relevance scale.
+
+**Ground truth** is rule-based: a course is "relevant" to an employee iff
+their normalized skill sets share at least 2 elements (case-insensitive).
+This is a *self-consistent benchmark* — it lets us compare retrieval methods
+on the same yardstick, not an absolute relevance score. The threshold and
+rationale are documented in [`src/learning_rec/eval/ground_truth.py`](src/learning_rec/eval/ground_truth.py).
+
+```bash
+# full eval: retrieval + rerank, no LLM judge
+python scripts/run_eval.py
+
+# cheap smoke run: 3 employees, retrieval only (skips chat-model calls)
+python scripts/run_eval.py --limit 3 --no-rerank
+
+# add LLM-as-judge (extra OpenAI calls)
+python scripts/run_eval.py --judge
+```
+
+Outputs `output/eval_report.json` (full per-employee detail) and
+`output/eval_summary.md` (paste-into-README summary).
+
+## Results
+
+> Baseline numbers from running `scripts/run_eval.py` against the synthetic
+> dataset will be filled in here once the harness has been run end-to-end.
+> Numbers shift slightly across LLM-rerank invocations because the chat
+> model is sampled at `temperature=0.2`.
 
 ## Development
 
@@ -183,10 +226,9 @@ CI runs both on every push and PR; see [`.github/workflows/ci.yml`](.github/work
 
 Planned extensions (not yet implemented in this public version):
 
-- **Evaluation harness** — offline metrics (recall@k, MRR, LLM-as-judge
-  relevance) over a held-out set, so README claims are backed by numbers.
 - **Hybrid retrieval** — BM25 + dense ensemble for queries dominated by rare
-  technical terms (e.g. specific tool names).
+  technical terms (e.g. specific tool names). Measurable against the eval
+  harness above.
 - **Streamlit UI** — one-page demo so reviewers can click through profiles
   without touching a terminal.
 

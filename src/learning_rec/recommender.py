@@ -1,4 +1,13 @@
-"""For a given employee profile, retrieve candidate courses and ask an LLM to re-rank."""
+"""For a given employee profile, retrieve candidate courses and ask an LLM to re-rank.
+
+Two public entry points:
+
+- `retrieve(emp, vectordb, k)` — dense semantic search only. Returns the raw
+  top-k candidates. Used by the eval harness to score retrieval quality
+  independently of the LLM stage.
+- `recommend(emp, vectordb, ...)` — full pipeline: retrieve, then LLM re-rank
+  to a top-N JSON list with justifications.
+"""
 
 from __future__ import annotations
 
@@ -48,19 +57,14 @@ def build_query(emp: pd.Series) -> str:
     )
 
 
-def recommend(
-    emp: pd.Series,
-    vectordb: FAISS,
-    llm: ChatOpenAI | None = None,
-    top_k: int = TOP_K,
-    n: int = NUM_RECOMMENDATIONS,
-) -> list[dict]:
-    if llm is None:
-        llm = ChatOpenAI(model=CHAT_MODEL, temperature=TEMPERATURE, max_tokens=512)
+def retrieve(emp: pd.Series, vectordb: FAISS, k: int = TOP_K) -> list[dict]:
+    """Run dense semantic search for an employee and return raw candidates.
 
+    Each candidate has: content_id, content_name, description (truncated), score.
+    """
     query = build_query(emp)
-    retrieved = vectordb.similarity_search_with_relevance_scores(query, k=top_k)
-    candidates = [
+    retrieved = vectordb.similarity_search_with_relevance_scores(query, k=k)
+    return [
         {
             "content_id": doc.metadata["cid"],
             "content_name": doc.metadata["name"],
@@ -69,6 +73,17 @@ def recommend(
         }
         for doc, score in retrieved
     ]
+
+
+def rerank_with_llm(
+    emp: pd.Series,
+    candidates: list[dict],
+    llm: ChatOpenAI | None = None,
+    n: int = NUM_RECOMMENDATIONS,
+) -> list[dict]:
+    """Ask the LLM to re-rank the candidate list to the top-N with reasons."""
+    if llm is None:
+        llm = ChatOpenAI(model=CHAT_MODEL, temperature=TEMPERATURE, max_tokens=512)
 
     response = llm.invoke(
         [
@@ -96,3 +111,15 @@ def recommend(
         raise ValueError(
             f"LLM returned invalid JSON; raw output saved to {err_path}"
         ) from None
+
+
+def recommend(
+    emp: pd.Series,
+    vectordb: FAISS,
+    llm: ChatOpenAI | None = None,
+    top_k: int = TOP_K,
+    n: int = NUM_RECOMMENDATIONS,
+) -> list[dict]:
+    """Full pipeline: dense retrieval, then LLM re-rank to top-N with reasons."""
+    candidates = retrieve(emp, vectordb, k=top_k)
+    return rerank_with_llm(emp, candidates, llm=llm, n=n)
