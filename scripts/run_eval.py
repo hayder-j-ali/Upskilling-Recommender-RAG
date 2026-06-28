@@ -35,6 +35,12 @@ def main() -> None:
     parser.add_argument("--index-dir", type=Path, default=INDEX_DIR)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
     parser.add_argument(
+        "--retriever",
+        choices=["dense", "bm25", "hybrid"],
+        default="dense",
+        help="Retrieval strategy to evaluate (default: dense baseline).",
+    )
+    parser.add_argument(
         "--limit", type=int, default=None, help="Only evaluate the first N employees."
     )
     parser.add_argument(
@@ -54,6 +60,7 @@ def main() -> None:
         content_path=args.content,
         index_dir=args.index_dir,
         output_dir=args.output_dir,
+        retriever_kind=args.retriever,
         limit=args.limit,
         rerank=not args.no_rerank,
         judge=args.judge,

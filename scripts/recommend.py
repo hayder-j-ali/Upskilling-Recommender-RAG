@@ -2,6 +2,7 @@
 
 Usage:
     python scripts/recommend.py
+    python scripts/recommend.py --retriever hybrid
     python scripts/recommend.py --employees data/employees.csv --output-dir output/
 """
 
@@ -16,15 +17,28 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from learning_rec.config import EMPLOYEES_FILE, INDEX_DIR, OUTPUT_DIR  # noqa: E402
-from learning_rec.recommender import load_vector_store, recommend  # noqa: E402
+from learning_rec.config import (  # noqa: E402
+    CONTENT_FILE,
+    EMPLOYEES_FILE,
+    INDEX_DIR,
+    OUTPUT_DIR,
+)
+from learning_rec.recommender import recommend  # noqa: E402
+from learning_rec.retrieval import build_retriever  # noqa: E402
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--employees", type=Path, default=EMPLOYEES_FILE)
+    parser.add_argument("--content", type=Path, default=CONTENT_FILE)
     parser.add_argument("--index-dir", type=Path, default=INDEX_DIR)
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument(
+        "--retriever",
+        choices=["dense", "bm25", "hybrid"],
+        default="dense",
+        help="Retrieval strategy (default: dense, the thesis baseline).",
+    )
     parser.add_argument(
         "--limit",
         type=int,
@@ -37,11 +51,13 @@ def main() -> None:
     if args.limit:
         df = df.head(args.limit)
 
-    vectordb = load_vector_store(args.index_dir)
+    retriever = build_retriever(
+        args.retriever, index_dir=args.index_dir, content_path=args.content
+    )
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     for _, row in df.iterrows():
-        recos = recommend(row, vectordb)
+        recos = recommend(row, retriever)
         emp_id = row["employee_id"]
         out_path = args.output_dir / f"recommend_{emp_id}.json"
         out_path.write_text(
