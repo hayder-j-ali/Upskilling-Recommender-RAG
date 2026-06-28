@@ -17,7 +17,6 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 import pandas as pd
-from langchain_community.vectorstores import FAISS
 
 from learning_rec.config import (
     CONTENT_FILE,
@@ -31,7 +30,9 @@ from learning_rec.eval.ground_truth import relevant_ids
 from learning_rec.eval.judge import judge_recommendation
 from learning_rec.eval.metrics import mrr_at_k, precision_at_k, recall_at_k
 from learning_rec.ingest import load_content
-from learning_rec.recommender import load_vector_store, rerank_with_llm, retrieve
+from learning_rec.recommender import rerank_with_llm, retrieve
+from learning_rec.retrieval import Retriever, build_retriever
+from learning_rec.retrieval.factory import RetrieverKind
 
 
 @dataclass
@@ -60,7 +61,7 @@ def evaluate(
     *,
     employees: pd.DataFrame,
     content: pd.DataFrame,
-    vectordb: FAISS,
+    retriever: Retriever,
     top_k: int = TOP_K,
     n_recs: int = NUM_RECOMMENDATIONS,
     rerank: bool = True,
@@ -70,7 +71,7 @@ def evaluate(
 
     for _, emp in employees.iterrows():
         truth = relevant_ids(emp, content)
-        candidates = retrieve(emp, vectordb, k=top_k)
+        candidates = retrieve(emp, retriever, k=top_k)
         retrieved_ids_top_k = [c["content_id"] for c in candidates]
 
         result = EmployeeResult(
@@ -136,6 +137,7 @@ def evaluate(
         "judge": judge,
         "n_employees": len(per_employee),
         "n_content": len(content),
+        "retriever": getattr(retriever, "__class__", type(retriever)).__name__,
     }
     return EvalReport(
         config=config,
@@ -150,6 +152,7 @@ def run_eval(
     content_path: Path = CONTENT_FILE,
     index_dir: Path = INDEX_DIR,
     output_dir: Path = OUTPUT_DIR,
+    retriever_kind: RetrieverKind = "dense",
     limit: int | None = None,
     rerank: bool = True,
     judge: bool = False,
@@ -159,12 +162,14 @@ def run_eval(
     if limit:
         employees = employees.head(limit)
     content = load_content(content_path)
-    vectordb = load_vector_store(index_dir)
+    retriever = build_retriever(
+        retriever_kind, index_dir=index_dir, content_path=content_path
+    )
 
     report = evaluate(
         employees=employees,
         content=content,
-        vectordb=vectordb,
+        retriever=retriever,
         rerank=rerank,
         judge=judge,
     )

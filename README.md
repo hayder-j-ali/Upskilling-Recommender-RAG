@@ -48,45 +48,55 @@ with a short justification:
 ## How it works
 
 ```
-                 ┌──────────────────────────────────────────────┐
-                 │       learning_content.csv (catalogue)       │
-                 │  id, name, description, keywords, skills...  │
-                 └──────────────────────┬───────────────────────┘
-                                        │ ingest.py
-                                        ▼
-                          ┌─────────────────────────┐
-                          │   OpenAI Embeddings     │
-                          │ (text-embedding-3-small)│
-                          └────────────┬────────────┘
-                                       ▼
-                              ┌─────────────────┐
-                              │  FAISS  index   │
-                              └────────┬────────┘
-                                       │ similarity search (k=10)
-       employee profile  ─── query ────┤
-       (skills 2x weighted)            ▼
-                                ┌─────────────┐
-                                │ candidates  │
-                                └──────┬──────┘
-                                       │ profile + candidates
-                                       ▼
-                               ┌──────────────┐
-                               │   LLM        │
-                               │  re-ranker   │     →  top-5 JSON with reasons
-                               │ (gpt-4o-mini)│
-                               └──────────────┘
+              ┌──────────────────────────────────────────────┐
+              │       learning_content.csv (catalogue)       │
+              │  id, name, description, keywords, skills...  │
+              └──────────────────────┬───────────────────────┘
+                                     │ ingest.py
+                ┌────────────────────┴────────────────────┐
+                ▼                                         ▼
+      ┌──────────────────┐                       ┌──────────────────┐
+      │  Dense:  FAISS   │                       │  Sparse:  BM25   │
+      │  text-embedding- │                       │  (rank-bm25)     │
+      │     3-small      │                       │                  │
+      └────────┬─────────┘                       └────────┬─────────┘
+               │  top-30 by cosine                        │  top-30 by BM25
+               └────────────────────┬────────────────────┘
+                                    ▼
+                          ┌───────────────────┐
+                          │   RRF fusion      │   ← --retriever hybrid
+                          │   (c = 60)        │
+                          └─────────┬─────────┘
+                                    │  top-10 fused candidates
+       employee profile ── query ───┤      (skills 2x weighted)
+                                    ▼
+                            ┌──────────────┐
+                            │   LLM        │
+                            │  re-ranker   │ →  top-5 JSON with reasons
+                            │ (gpt-4o-mini)│
+                            └──────────────┘
 ```
 
-Two design choices worth calling out:
+A `--retriever {dense,bm25,hybrid}` flag selects which retrieval strategy
+runs upstream of the LLM. Hybrid is the recommended default for production
+use; dense matches the original thesis baseline.
 
-1. **Skill-weighted query.** When constructing the embedding query for an
-   employee, the `skills` field is duplicated. In the thesis evaluation this
-   small change reliably nudged the retriever toward skill-relevant content
-   without needing a separate rerank stage on top of pure cosine similarity.
-2. **LLM as re-ranker, not retriever.** The vector store retrieves a
-   shortlist of `k=10`; the LLM only re-ranks and explains. This keeps
-   inference cost bounded by `k`, not by catalogue size, and lets the LLM
-   give human-readable justifications that an embedding score can't.
+Design choices worth calling out:
+
+1. **Hybrid retrieval via RRF.** BM25 catches exact lexical matches for
+   rare technical terms ("Kubernetes", "dbt", "OpenTelemetry") that dense
+   embeddings tend to smooth over; dense catches semantic matches BM25
+   misses ("orchestration" ↔ "Airflow"). [Reciprocal Rank Fusion](https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf)
+   combines their rankings robustly without needing score normalization.
+2. **Skill-weighted query.** When constructing the query for an employee,
+   the `skills` field is duplicated. In the thesis evaluation this small
+   change reliably nudged the retriever toward skill-relevant content;
+   for BM25 it boosts the term frequency of skill tokens, keeping signals
+   aligned across both retrievers.
+3. **LLM as re-ranker, not retriever.** Retrieval returns a shortlist of
+   `k=10`; the LLM only re-ranks and explains. This keeps inference cost
+   bounded by `k`, not by catalogue size, and lets the LLM give
+   human-readable justifications that retrieval scores can't.
 
 ## Quick start
 
@@ -106,10 +116,13 @@ python scripts/generate_synthetic_data.py
 # build the FAISS index from the catalogue
 python scripts/build_index.py --reset
 
-# produce recommendations for every employee
+# produce recommendations for every employee (defaults to dense retrieval)
 python scripts/recommend.py
 
-# or, smoke-test on just one
+# or use hybrid retrieval (BM25 + dense fused with RRF)
+python scripts/recommend.py --retriever hybrid
+
+# smoke-test on just one
 python scripts/recommend.py --limit 1
 ```
 
@@ -143,6 +156,12 @@ Upskilling-Recommender-RAG/
 │   ├── ingest.py                  # catalogue -> FAISS
 │   ├── recommender.py             # retrieve(), rerank_with_llm(), recommend()
 │   ├── prompts.py                 # LLM system prompts
+│   ├── retrieval/
+│   │   ├── base.py                # Retriever protocol + Candidate shape
+│   │   ├── dense.py               # FAISS / OpenAI-embeddings retriever
+│   │   ├── bm25.py                # in-memory BM25 retriever
+│   │   ├── hybrid.py              # RRF fusion
+│   │   └── factory.py             # build_retriever("dense"|"bm25"|"hybrid")
 │   └── eval/
 │       ├── ground_truth.py        # rule-based relevance labels
 │       ├── metrics.py             # recall@k, MRR, precision@k
@@ -175,8 +194,9 @@ Python-literal lists — `ingest.to_list()` normalizes them.
 
 The eval harness measures the recommender at two stages independently:
 
-- **Retrieval** — does dense FAISS search surface the relevant items at all?
-  Metrics: `recall@10`, `precision@10`, `mrr@10`.
+- **Retrieval** — does the chosen retriever surface the relevant items at all?
+  Metrics: `recall@10`, `precision@10`, `mrr@10`. Compare strategies with
+  `--retriever {dense,bm25,hybrid}`.
 - **End-to-end** — does the LLM rerank stage pick good items? Metric:
   `precision@5` against the ground-truth labels, plus an optional
   **LLM-as-judge** that rates each recommendation on a 4-point relevance scale.
@@ -193,6 +213,12 @@ python scripts/run_eval.py
 
 # cheap smoke run: 3 employees, retrieval only (skips chat-model calls)
 python scripts/run_eval.py --limit 3 --no-rerank
+
+# BM25 retrieval-only — fully offline, no OpenAI calls at all
+python scripts/run_eval.py --retriever bm25 --no-rerank
+
+# compare hybrid retrieval (BM25 + dense) end-to-end
+python scripts/run_eval.py --retriever hybrid
 
 # add LLM-as-judge (extra OpenAI calls)
 python scripts/run_eval.py --judge
@@ -226,9 +252,6 @@ CI runs both on every push and PR; see [`.github/workflows/ci.yml`](.github/work
 
 Planned extensions (not yet implemented in this public version):
 
-- **Hybrid retrieval** — BM25 + dense ensemble for queries dominated by rare
-  technical terms (e.g. specific tool names). Measurable against the eval
-  harness above.
 - **Streamlit UI** — one-page demo so reviewers can click through profiles
   without touching a terminal.
 
