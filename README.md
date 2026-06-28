@@ -167,6 +167,8 @@ Upskilling-Recommender-RAG/
 │       ├── metrics.py             # recall@k, MRR, precision@k
 │       ├── judge.py               # LLM-as-judge
 │       └── pipeline.py            # orchestrates an eval run
+├── app/
+│   └── streamlit_app.py           # interactive demo UI
 ├── scripts/
 │   ├── generate_synthetic_data.py # rebuild the demo dataset
 │   ├── build_index.py             # CLI for ingest
@@ -234,10 +236,30 @@ Outputs `output/eval_report.json` (full per-employee detail) and
 > Numbers shift slightly across LLM-rerank invocations because the chat
 > model is sampled at `temperature=0.2`.
 
+## Demo UI
+
+A Streamlit app wraps the same pipeline so you can click through profiles
+without touching a terminal. Pick an employee, choose a retriever
+(`dense` / `bm25` / `hybrid`), toggle LLM re-ranking on or off, get
+recommendations.
+
+```bash
+pip install -e ".[ui]"
+streamlit run app/streamlit_app.py
+```
+
+Opens at <http://localhost:8501>. Picking **bm25** with **LLM re-rank
+unchecked** runs the demo fully offline (no OpenAI calls).
+
+![Streamlit demo screenshot](docs/screenshot.png)
+
+> If the screenshot above is missing, run the app once and capture it —
+> there's no committed image yet, just the placeholder.
+
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"   # includes the UI extra so all tests run
 
 # lint
 ruff check .
@@ -247,13 +269,6 @@ pytest -v
 ```
 
 CI runs both on every push and PR; see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
-
-## Roadmap
-
-Planned extensions (not yet implemented in this public version):
-
-- **Streamlit UI** — one-page demo so reviewers can click through profiles
-  without touching a terminal.
 
 ## Origin
 
