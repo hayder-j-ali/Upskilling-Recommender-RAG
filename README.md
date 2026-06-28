@@ -1,5 +1,9 @@
 # Upskilling Recommender RAG
 
+[![CI](https://github.com/hayderalijaan/Upskilling-Recommender-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/hayderalijaan/Upskilling-Recommender-RAG/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+
 > Match employees to upskilling content with semantic search and an LLM re-ranker.
 
 A retrieval-augmented generation pipeline that recommends learning content
@@ -160,6 +164,20 @@ the two CSVs with your own, keeping the columns:
 
 `keywords` and `skills` may be semicolon-separated, comma-separated, or
 Python-literal lists — `ingest.to_list()` normalizes them.
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+
+# lint
+ruff check .
+
+# tests (offline only — no API calls)
+pytest -v
+```
+
+CI runs both on every push and PR; see [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ## Roadmap
 

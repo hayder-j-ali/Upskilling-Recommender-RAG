@@ -10,10 +10,46 @@ readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "Hayder Ali" }]
+dependencies = [
+    "langchain-community>=0.3.0",
+    "langchain-openai>=0.2.0",
+    "langchain-core>=0.3.0",
+    "faiss-cpu>=1.8.0",
+    "openai>=1.40.0",
+    "pandas>=2.2.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.66.0",
+    "openpyxl>=3.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = [".venv", "vector_store", "output"]
+
+[tool.ruff.lint]
+extend-select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # bugbear
+    "UP",   # pyupgrade
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Synthetic-data definitions are essentially long string literals; wrapping
+# course descriptions across lines would hurt readability with no upside.
+"scripts/generate_synthetic_data.py" = ["E501"]
