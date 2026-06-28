@@ -1,0 +1,38 @@
+content_id,content_name,content_description,content_language,duration_seconds,keywords,skills
+C0001,Advanced SQL for Analytics,"Window functions, CTEs, query optimization, and warehouse-specific tips for Snowflake and BigQuery.",en,5400,sql;analytics;warehouse;optimization,SQL;Data Analysis;BigQuery;Snowflake
+C0002,Building Production ETL with Airflow,"Author idempotent DAGs, manage backfills, and monitor pipeline reliability in Apache Airflow.",en,7200,airflow;etl;orchestration;data engineering,Airflow;Python;ETL;Data Engineering
+C0003,Data Modeling with dbt,"Structure analytics codebases with dbt: staging/marts layering, tests, snapshots, and docs.",en,4800,dbt;modeling;analytics engineering,dbt;SQL;Data Modeling
+C0004,Streaming Data with Kafka,"Produce, consume, and process event streams; partitioning, consumer groups, and exactly-once semantics.",en,6000,kafka;streaming;events,Kafka;Streaming;Distributed Systems
+C0005,Spark for Big Data Processing,"PySpark fundamentals: DataFrame API, partitioning, joins, and tuning for large-scale jobs.",en,7200,spark;pyspark;big data,Spark;Python;Big Data
+C0006,AWS Cloud Practitioner Essentials,"Core AWS services overview: EC2, S3, IAM, VPC, billing. Foundation for the Cloud Practitioner exam.",en,9000,aws;cloud;certification,AWS;Cloud Computing
+C0007,Kubernetes in Production,"Workload patterns, ingress, autoscaling, observability, and zero-downtime deployments.",en,8400,kubernetes;k8s;devops;containers,Kubernetes;DevOps;Docker
+C0008,Terraform for Infrastructure as Code,"Provision multi-cloud infrastructure with reusable modules, remote state, and CI integration.",en,5400,terraform;iac;devops,Terraform;IaC;DevOps
+C0009,CI/CD with GitHub Actions,"Build, test, and ship pipelines: matrix jobs, reusable workflows, secrets, and environment gating.",en,3600,ci;cd;github actions;automation,CI/CD;GitHub Actions;DevOps
+C0010,Observability with OpenTelemetry,"Instrument applications for traces, metrics, and logs; integrate with Prometheus, Grafana, and Jaeger.",en,4800,observability;tracing;monitoring,OpenTelemetry;Observability;SRE
+C0011,Practical Machine Learning with scikit-learn,"End-to-end ML: feature engineering, model selection, cross-validation, and deployment-ready pipelines.",en,9000,machine learning;ml;scikit-learn,Machine Learning;Python;scikit-learn
+C0012,Deep Learning Fundamentals with PyTorch,"Tensors, autograd, training loops, CNNs, and transformers in PyTorch.",en,10800,deep learning;pytorch;neural networks,Deep Learning;PyTorch;Python
+C0013,MLOps: Shipping ML Models to Production,"Experiment tracking, model registries, online/offline serving, and monitoring for drift.",en,7200,mlops;deployment;monitoring,MLOps;Machine Learning;DevOps
+C0014,LLMs and Retrieval-Augmented Generation,"Build RAG systems: embeddings, vector stores, prompt design, and evaluation methods.",en,6000,llm;rag;embeddings;vector search,LLMs;RAG;NLP;Python
+C0015,Prompt Engineering for Developers,"Patterns for reliable LLM outputs: few-shot prompting, function/tool calling, JSON-mode constraints.",en,3000,prompt engineering;llm;ai,Prompt Engineering;LLMs
+C0016,Clean Code Principles,"Naming, function design, comments, error handling — code that reads like prose.",en,4200,clean code;software craftsmanship,Software Engineering;Code Quality
+C0017,Test-Driven Development in Python,"Red-green-refactor with pytest; mocking, fixtures, and property-based tests.",en,4800,testing;tdd;pytest,Testing;Python;TDD
+C0018,Designing RESTful APIs,"Resource modeling, versioning, idempotency, pagination, and API documentation with OpenAPI.",en,4200,api;rest;design,API Design;Backend Development
+C0019,System Design Interview Prep,"Approach scalable-system questions: capacity estimation, data partitioning, caching, queues.",en,7200,system design;scalability;interview,System Design;Distributed Systems
+C0020,Modern TypeScript,"Generics, conditional types, narrowing, and patterns for typed React components.",en,5400,typescript;frontend;types,TypeScript;Frontend Development
+C0021,React with Hooks and Suspense,"Functional components, custom hooks, server components, and data fetching patterns.",en,6000,react;frontend;hooks,React;JavaScript;Frontend Development
+C0022,Product Management Foundations,"From discovery to launch: customer interviews, roadmaps, OKRs, and prioritization frameworks.",en,6000,product management;roadmap;okrs,Product Management;Strategy
+C0023,User Research Methods,"Interview techniques, usability studies, surveys, and synthesizing qualitative insights.",en,4800,user research;ux;qualitative,User Research;UX
+C0024,Figma for Product Designers,"Components, auto-layout, variables, prototyping, and design-system maintenance.",en,5400,figma;design;ux,Figma;UX Design
+C0025,Leading Engineering Teams,"1:1s, performance management, technical strategy, and growing senior engineers.",en,7200,leadership;engineering management,Leadership;Engineering Management
+C0026,Effective Technical Communication,"Write design docs, give clear status updates, run productive review meetings.",en,3600,communication;writing;soft skills,Communication;Technical Writing
+C0027,Negotiation Skills for Professionals,"Principled negotiation, BATNA, and managing difficult conversations at work.",en,4200,negotiation;communication;soft skills,Negotiation;Communication
+C0028,Agile and Scrum Essentials,"Ceremonies, roles, estimation, and avoiding common anti-patterns in Scrum teams.",en,3600,agile;scrum;process,Agile;Scrum
+C0029,Application Security Fundamentals,"OWASP Top 10, authentication, secrets management, and dependency hygiene.",en,4800,security;owasp;appsec,Application Security;OWASP
+C0030,Cloud Security on AWS,"IAM least privilege, KMS, VPC isolation, GuardDuty, and incident response basics.",en,5400,security;aws;iam,Cloud Security;AWS;IAM
+C0031,Business English for Technical Roles,"Email, meetings, and presentations: vocabulary and patterns for international teams.",en,9000,english;language;communication,English;Communication
+C0032,German for the Workplace (B1),"Practical German for office communication: meetings, emails, and small talk.",en,18000,german;language;communication,German;Communication
+C0033,Time Management for Knowledge Workers,"Calendar blocking, async-first habits, and protecting focus time.",en,2400,productivity;time management;focus,Productivity;Self-Management
+C0034,Data Visualization with Python,"Chart selection, perceptual best practices, and building publication-quality figures with matplotlib and plotly.",en,5400,visualization;matplotlib;plotly,Data Visualization;Python
+C0035,Statistics for Data Practitioners,"Descriptive stats, distributions, hypothesis testing, and avoiding common pitfalls.",en,7200,statistics;data analysis,Statistics;Data Analysis
+C0036,Power BI for Business Analysts,"Data modeling, DAX measures, and building executive-ready dashboards.",en,6000,power bi;dashboards;bi,Power BI;Business Intelligence
+C0037,Tableau Fundamentals,"Calculated fields, LOD expressions, dashboard layout, and storytelling with data.",en,5400,tableau;dashboards;bi,Tableau;Business Intelligence
