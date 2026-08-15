@@ -47,8 +47,12 @@ with a short justification:
 
 ## How it works
 
-
-![Chart](docs/infograph.png)
+![Pipeline diagram: the content catalogue is ingested into two indexes in
+parallel — dense FAISS vectors from Gemini embeddings, and sparse BM25.
+Each returns its top 30, RRF fusion combines them into 10 candidates, and
+an employee profile (with skills weighted twice) becomes the query. A
+Gemini flash re-ranker turns those candidates into a top-5 JSON list with
+a reason for each pick.](docs/infograph.png)
 
 
 A `--retriever {dense,bm25,hybrid}` flag selects which retrieval strategy
