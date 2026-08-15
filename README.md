@@ -47,35 +47,9 @@ with a short justification:
 
 ## How it works
 
-```
-              ┌──────────────────────────────────────────────┐
-              │       learning_content.csv (catalogue)       │
-              │  id, name, description, keywords, skills...  │
-              └──────────────────────┬───────────────────────┘
-                                     │ ingest.py
-                ┌────────────────────┴────────────────────┐
-                ▼                                         ▼
-      ┌──────────────────┐                       ┌──────────────────┐
-      │  Dense:  FAISS   │                       │  Sparse:  BM25   │
-      │      Gemini      │                       │  (rank-bm25)     │
-      │   embedding-2    │                       │                  │
-      └────────┬─────────┘                       └────────┬─────────┘
-               │  top-30 by cosine                        │  top-30 by BM25
-               └────────────────────┬────────────────────┘
-                                    ▼
-                          ┌───────────────────┐
-                          │   RRF fusion      │   ← --retriever hybrid
-                          │   (c = 60)        │
-                          └─────────┬─────────┘
-                                    │  top-10 fused candidates
-       employee profile ── query ───┤      (skills 2x weighted)
-                                    ▼
-                            ┌──────────────┐
-                            │   LLM        │
-                            │  re-ranker   │ →  top-5 JSON with reasons
-                            │(gemini-flash)│
-                            └──────────────┘
-```
+
+![Streamlit demo screenshot](docs/infograph.png)
+
 
 A `--retriever {dense,bm25,hybrid}` flag selects which retrieval strategy
 runs upstream of the LLM; dense matches the original thesis baseline. Hybrid
