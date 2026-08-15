@@ -44,6 +44,7 @@ from learning_rec.config import (
     INDEX_DIR,
     NUM_RECOMMENDATIONS,
     TOP_K,
+    shadowed_dotenv_vars,
 )
 from learning_rec.llm_utils import api_error_guidance
 from learning_rec.recommender import rerank_with_llm, retrieve
@@ -136,6 +137,18 @@ if _needs_api_key(retriever_kind, use_rerank):
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
             "offline demo."
         )
+    # Surfaced before anything else: when a shell export shadows .env, every
+    # other diagnostic misleads, because edits to .env have no effect at all.
+    _shadowed = shadowed_dotenv_vars()
+    if _shadowed:
+        st.sidebar.warning(
+            f"{', '.join(f'`{n}`' for n in _shadowed)} is set in your shell "
+            "and overrides `.env`, so your `.env` value is being ignored. "
+            "If authentication fails, this is the first thing to check — run "
+            "`echo $GOOGLE_API_KEY` in the terminal you launched from, then "
+            "`unset GOOGLE_API_KEY` and restart."
+        )
+
     # Deliberately no key-format validation here. An earlier version warned
     # when the key did not start with `AIza`, on the assumption that was the
     # Gemini key format. It is the *legacy* format: AI Studio now issues
