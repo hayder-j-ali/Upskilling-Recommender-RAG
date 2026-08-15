@@ -138,15 +138,22 @@ class TestClassifyApiError:
 
 
 class TestApiErrorGuidance:
-    def test_auth_error_does_not_advise_retrying(self):
-        """The bug this guards: a 401 was being reported as "usually
-        transient, wait and try again", which is the opposite of the truth —
-        a wrong credential never fixes itself.
+    def test_auth_error_points_at_the_credential_not_a_retry(self):
+        """Guards against both wrong messages this code has shipped.
+
+        First it called a 401 "usually transient — wait and try again",
+        which sends people in circles. The correction then overshot to
+        "retrying will not help", which measurement contradicted: the
+        wrong-type credential in question succeeded on the great majority
+        of identical calls, so a retry often *does* appear to work. The
+        accurate framing is that the credential is wrong and inconsistently
+        accepted, so only replacing it resolves things durably.
         """
         msg = api_error_guidance(Exception(TestClassifyApiError.REAL_AUTH_ERROR))
-        assert "retrying will not help" in msg
+        assert "credential problem" in msg
         assert "aistudio.google.com/apikey" in msg
-        assert "usually transient" not in msg
+        assert "usually transient" not in msg  # not a transient fault
+        assert "inconsistently" in msg  # nor a clean, always-fails rejection
 
     def test_transient_error_does_advise_retrying(self):
         msg = api_error_guidance(Exception(TestClassifyApiError.REAL_OVERLOAD_ERROR))

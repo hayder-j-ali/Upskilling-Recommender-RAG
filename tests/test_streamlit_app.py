@@ -123,5 +123,5 @@ class TestApiErrorHandling:
         # A wrong credential never fixes itself, so this must NOT tell the
         # user to wait and retry (the advice a 503 gets) — it has to point
         # at the credential instead.
-        assert "retrying will not help" in error_text
+        assert "credential problem" in error_text
         assert "aistudio.google.com/apikey" in error_text
