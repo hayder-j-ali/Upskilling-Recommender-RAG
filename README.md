@@ -1,6 +1,6 @@
 # Upskilling Recommender RAG
 
-[![CI](https://github.com/hayderalijaan/Upskilling-Recommender-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/hayderalijaan/Upskilling-Recommender-RAG/actions/workflows/ci.yml)
+[![CI](https://github.com/hayder-j-ali/Upskilling-Recommender-RAG/actions/workflows/ci.yml/badge.svg)](https://github.com/hayder-j-ali/Upskilling-Recommender-RAG/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
@@ -101,7 +101,7 @@ Design choices worth calling out:
 ## Quick start
 
 ```bash
-git clone https://github.com/hayderalijaan/Upskilling-Recommender-RAG.git
+git clone https://github.com/hayder-j-ali/Upskilling-Recommender-RAG.git
 cd Upskilling-Recommender-RAG
 
 python3 -m venv .venv && source .venv/bin/activate
@@ -248,13 +248,15 @@ pip install -e ".[ui]"
 streamlit run app/streamlit_app.py
 ```
 
-Opens at <http://localhost:8501>. Picking **bm25** with **LLM re-rank
-unchecked** runs the demo fully offline (no OpenAI calls).
+Opens at <http://localhost:8501>. The app adapts its defaults to your
+environment: with no `OPENAI_API_KEY` set it starts on **bm25** with
+re-ranking off, so the demo runs fully offline with no API calls.
 
 ![Streamlit demo screenshot](docs/screenshot.png)
 
-> If the screenshot above is missing, run the app once and capture it —
-> there's no committed image yet, just the placeholder.
+*Above: offline mode — BM25 retrieval with LLM re-ranking disabled, showing
+raw retriever scores. With a key set and re-ranking on, each card instead
+carries the model's one-line justification for the pick.*
 
 ## Development
 
