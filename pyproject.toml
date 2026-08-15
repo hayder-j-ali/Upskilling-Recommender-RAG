@@ -11,9 +11,15 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 authors = [{ name = "Hayder Ali" }]
 dependencies = [
-    "langchain-community>=0.3.0",
+    # langchain-community is deliberately absent. It was sunset on
+    # 2026-05-22 (final release 0.4.2, that same day) and no official
+    # package took over its FAISS integration — the `langchain-faiss` name
+    # on PyPI belongs to an unaffiliated account and declares no
+    # dependencies at all. learning_rec.vector_store uses faiss directly
+    # instead, which this project already depended on.
     "langchain-google-genai>=2.0.0",
     "langchain-core>=0.3.0",
+    "numpy>=1.26.0",
     # Declared directly, not just relied on transitively via
     # langchain-google-genai: the Streamlit app catches
     # google.genai.errors.APIError directly to show a clean message on

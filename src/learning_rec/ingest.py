@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pandas as pd
 import tqdm
-from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from learning_rec import index_meta
 from learning_rec.config import CONTENT_FILE, EMBEDDING_MODEL, INDEX_DIR
+from learning_rec.vector_store import VectorStore
 
 
 def to_list(x) -> list[str]:
@@ -86,7 +86,7 @@ def build_vector_store(
     content_path: Path = CONTENT_FILE,
     index_dir: Path = INDEX_DIR,
     reset: bool = False,
-) -> FAISS:
+) -> VectorStore:
     df = load_content(content_path)
     docs = build_documents(df)
 
@@ -96,9 +96,8 @@ def build_vector_store(
         for p in index_dir.glob("*"):
             p.unlink()
 
-    vectordb = FAISS.from_documents(docs, embeddings)
-    index_dir.mkdir(parents=True, exist_ok=True)
-    vectordb.save_local(str(index_dir))
+    vectordb = VectorStore.from_documents(docs, embeddings)
+    vectordb.save(index_dir)
     # Recorded so DenseRetriever can refuse an index built by a different
     # model — see learning_rec.index_meta for why that check has to exist.
     index_meta.write(
