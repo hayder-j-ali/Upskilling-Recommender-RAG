@@ -48,7 +48,7 @@ with a short justification:
 ## How it works
 
 
-![Streamlit demo screenshot](docs/infograph.png)
+![Chart](docs/infograph.png)
 
 
 A `--retriever {dense,bm25,hybrid}` flag selects which retrieval strategy
