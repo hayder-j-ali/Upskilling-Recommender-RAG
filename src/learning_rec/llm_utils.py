@@ -86,15 +86,16 @@ def api_error_guidance(exc: BaseException) -> str:
     kind = classify_api_error(exc)
     if kind == "auth":
         return (
-            "This is a credential problem. The Gemini Developer API expects "
-            "an API key from https://aistudio.google.com/apikey — these "
-            "start with `AIza`. An OAuth access token, or a key issued for a "
-            "different Google product, may be accepted inconsistently: it "
-            "can work on chat and on many embedding calls, then be rejected "
-            "on others, so a retry that appears to fix it is not a fix. "
-            "Set a valid key as `GOOGLE_API_KEY` for a durable resolution, "
-            "or switch to **bm25** with **LLM re-rank** off to run fully "
-            "offline."
+            "The API rejected the credential for this specific endpoint. "
+            "Google AI Studio now issues *auth keys* by default (bound to a "
+            "Google Cloud service account, so requests run under that "
+            "account's identity), and endpoints do not all accept them "
+            "identically — chat can succeed while the embeddings endpoint "
+            "returns `ACCESS_TOKEN_TYPE_UNSUPPORTED`, which is why "
+            "re-ranking works and retrieval fails. Check the key and its "
+            "service-account permissions at "
+            "https://aistudio.google.com/apikey, or switch to **bm25** with "
+            "**LLM re-rank** off to run fully offline."
         )
     if kind == "rate_limit":
         return (

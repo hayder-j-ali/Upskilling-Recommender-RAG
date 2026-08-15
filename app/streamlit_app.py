@@ -84,11 +84,6 @@ def _needs_api_key(kind: RetrieverKind, use_rerank: bool) -> bool:
     return kind != "bm25" or use_rerank
 
 
-def _looks_like_api_key() -> bool:
-    """Gemini Developer API keys start with 'AIza'; OAuth tokens do not."""
-    return os.getenv("GOOGLE_API_KEY", "").startswith("AIza")
-
-
 # ---------------------------------------------------------------------------
 # Sidebar — settings
 # ---------------------------------------------------------------------------
@@ -141,18 +136,14 @@ if _needs_api_key(retriever_kind, use_rerank):
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
             "offline demo."
         )
-    elif not _looks_like_api_key():
-        # Caught before a click rather than after: a wrong-*type* credential
-        # can authenticate against chat while the embeddings endpoint rejects
-        # it with 401 ACCESS_TOKEN_TYPE_UNSUPPORTED, which reads like a
-        # server-side glitch and sends people chasing the wrong problem.
-        st.sidebar.warning(
-            "`GOOGLE_API_KEY` does not look like a Gemini API key (those "
-            "start with `AIza`). OAuth access tokens and keys from other "
-            "Google products are often rejected by the embeddings endpoint "
-            "even when chat works. Get one at "
-            "https://aistudio.google.com/apikey."
-        )
+    # Deliberately no key-format validation here. An earlier version warned
+    # when the key did not start with `AIza`, on the assumption that was the
+    # Gemini key format. It is the *legacy* format: AI Studio now issues
+    # service-account-bound "auth keys" (`AQ.` prefix) by default, and
+    # standard `AIza` keys are slated for rejection in September 2026. The
+    # check therefore flagged correct, current keys as suspect. Prefix
+    # sniffing is the wrong tool — the API is the only authority on whether
+    # a credential works, and its errors are handled where the calls happen.
 else:
     st.sidebar.success("Running fully offline — no API calls on this click.")
 

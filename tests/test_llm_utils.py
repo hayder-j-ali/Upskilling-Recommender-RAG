@@ -138,22 +138,26 @@ class TestClassifyApiError:
 
 
 class TestApiErrorGuidance:
-    def test_auth_error_points_at_the_credential_not_a_retry(self):
-        """Guards against both wrong messages this code has shipped.
+    def test_auth_error_describes_endpoint_scope_not_a_bad_key(self):
+        """Guards against three wrong messages this code has shipped.
 
-        First it called a 401 "usually transient — wait and try again",
-        which sends people in circles. The correction then overshot to
-        "retrying will not help", which measurement contradicted: the
-        wrong-type credential in question succeeded on the great majority
-        of identical calls, so a retry often *does* appear to work. The
-        accurate framing is that the credential is wrong and inconsistently
-        accepted, so only replacing it resolves things durably.
+        1. "Usually transient — wait and try again": sends people in circles.
+        2. "Retrying will not help": measurement contradicted it; the same
+           credential succeeded on the great majority of identical calls.
+        3. "Gemini keys start with `AIza`, get a valid one": backwards.
+           `AIza` is the *legacy* Standard-key format, slated for rejection
+           in September 2026. AI Studio now issues service-account-bound
+           auth keys (`AQ.` prefix) by default, so this told users to
+           downgrade to a deprecated credential.
+
+        What the endpoint metadata actually reports is scope: the
+        credential is refused by this *method* while others accept it.
         """
         msg = api_error_guidance(Exception(TestClassifyApiError.REAL_AUTH_ERROR))
-        assert "credential problem" in msg
-        assert "aistudio.google.com/apikey" in msg
-        assert "usually transient" not in msg  # not a transient fault
-        assert "inconsistently" in msg  # nor a clean, always-fails rejection
+        assert "this specific endpoint" in msg
+        assert "auth keys" in msg
+        assert "AIza" not in msg  # never steer users to the legacy format
+        assert "usually transient" not in msg
 
     def test_transient_error_does_advise_retrying(self):
         msg = api_error_guidance(Exception(TestClassifyApiError.REAL_OVERLOAD_ERROR))
