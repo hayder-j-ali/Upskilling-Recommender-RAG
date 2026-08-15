@@ -14,7 +14,7 @@ class FakeRetriever:
     def __init__(self, ranked_ids: list[str]) -> None:
         self._ranked_ids = ranked_ids
 
-    def retrieve(self, query: str, k: int) -> list[Candidate]:  # noqa: ARG002
+    def retrieve(self, query: str, k: int) -> list[Candidate]:
         return [
             Candidate(
                 content_id=cid,

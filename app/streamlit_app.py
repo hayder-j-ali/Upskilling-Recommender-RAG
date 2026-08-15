@@ -26,16 +26,16 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from learning_rec.config import (  # noqa: E402
+from learning_rec.config import (
     CONTENT_FILE,
     EMPLOYEES_FILE,
     INDEX_DIR,
     NUM_RECOMMENDATIONS,
     TOP_K,
 )
-from learning_rec.recommender import rerank_with_llm, retrieve  # noqa: E402
-from learning_rec.retrieval import build_retriever  # noqa: E402
-from learning_rec.retrieval.factory import RetrieverKind  # noqa: E402
+from learning_rec.recommender import rerank_with_llm, retrieve
+from learning_rec.retrieval import build_retriever
+from learning_rec.retrieval.factory import RetrieverKind
 
 # ---------------------------------------------------------------------------
 # Page setup
@@ -63,6 +63,10 @@ def get_retriever(kind: RetrieverKind):
     return build_retriever(kind, index_dir=INDEX_DIR, content_path=CONTENT_FILE)
 
 
+def _has_openai_key() -> bool:
+    return bool(os.getenv("OPENAI_API_KEY"))
+
+
 def _needs_openai(kind: RetrieverKind, use_rerank: bool) -> bool:
     return kind != "bm25" or use_rerank
 
@@ -85,7 +89,7 @@ emp = employees[employees.employee_id == emp_id].iloc[0]
 retriever_kind: RetrieverKind = st.sidebar.radio(
     "Retrieval strategy",
     options=["dense", "bm25", "hybrid"],
-    index=2,
+    index=2 if _has_openai_key() else 1,
     help=(
         "**dense** — FAISS over OpenAI embeddings (the thesis baseline).  \n"
         "**bm25** — sparse lexical scoring, no API calls.  \n"
@@ -95,7 +99,7 @@ retriever_kind: RetrieverKind = st.sidebar.radio(
 
 use_rerank = st.sidebar.checkbox(
     "LLM re-rank with reasons",
-    value=True,
+    value=_has_openai_key(),
     help=(
         "Calls gpt-4o-mini to re-rank and explain each pick. Adds a few "
         "cents per click. Uncheck to see raw retrieval candidates only "
@@ -112,7 +116,7 @@ n_recs = (
 
 # Cost / prereq hint
 if _needs_openai(retriever_kind, use_rerank):
-    if not os.getenv("OPENAI_API_KEY"):
+    if not _has_openai_key():
         st.sidebar.error(
             "OPENAI_API_KEY not set. Either set it in your environment / "
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
@@ -128,7 +132,7 @@ else:
 
 st.title("📚 Upskilling Recommender")
 _README_URL = (
-    "https://github.com/hayderalijaan/Upskilling-Recommender-RAG#how-it-works"
+    "https://github.com/hayder-j-ali/Upskilling-Recommender-RAG#how-it-works"
 )
 st.markdown(
     "*Match employees to upskilling content with semantic search and an "
@@ -155,6 +159,12 @@ with results_col:
             "Pick an employee and settings on the left, then click **Generate "
             "recommendations**. Try the same employee with different retrieval "
             "strategies to see how the picks change."
+        )
+    elif _needs_openai(retriever_kind, use_rerank) and not _has_openai_key():
+        st.error(
+            "This configuration needs an OpenAI API key. Set `OPENAI_API_KEY` "
+            "in your environment or `.env`, or switch to **bm25** and uncheck "
+            "**LLM re-rank** for a fully offline demo."
         )
     else:
         spinner_msg = (

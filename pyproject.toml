@@ -27,7 +27,13 @@ dependencies = [
 ui = ["streamlit>=1.36.0"]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.6.0",
+    # Pinned to one minor line, deliberately. CI installs fresh on every
+    # run, so an open range lets a ruff release turn CI red with no code
+    # change — which happened here twice over: newer ruff began flagging
+    # RUF100 on `noqa` directives that had become unnecessary, while older
+    # ruff flags UP038 on an `isinstance` tuple that current ruff prefers.
+    # A range spanning both cannot be satisfied. Bump this consciously.
+    "ruff>=0.16,<0.17",
     "streamlit>=1.36.0",
 ]
 
@@ -56,3 +62,11 @@ extend-select = [
 # Synthetic-data definitions are essentially long string literals; wrapping
 # course descriptions across lines would hurt readability with no upside.
 "scripts/generate_synthetic_data.py" = ["E501"]
+
+# Entry points bootstrap sys.path so the package is importable without an
+# install step, which forces imports below that line. Declared here rather
+# than with per-line `noqa` comments: ruff versions disagree about whether
+# E402 fires on this pattern at all, and a `noqa` for a rule that doesn't
+# fire is itself an error (RUF100). A per-file-ignore is inert either way.
+"scripts/*.py" = ["E402"]
+"app/streamlit_app.py" = ["E402"]

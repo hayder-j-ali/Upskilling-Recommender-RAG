@@ -17,14 +17,14 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from learning_rec.config import (  # noqa: E402
+from learning_rec.config import (
     CONTENT_FILE,
     EMPLOYEES_FILE,
     INDEX_DIR,
     OUTPUT_DIR,
 )
-from learning_rec.recommender import recommend  # noqa: E402
-from learning_rec.retrieval import build_retriever  # noqa: E402
+from learning_rec.recommender import recommend
+from learning_rec.retrieval import build_retriever
 
 
 def main() -> None:
