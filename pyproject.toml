@@ -14,6 +14,11 @@ dependencies = [
     "langchain-community>=0.3.0",
     "langchain-google-genai>=2.0.0",
     "langchain-core>=0.3.0",
+    # Declared directly, not just relied on transitively via
+    # langchain-google-genai: the Streamlit app catches
+    # google.genai.errors.APIError directly to show a clean message on
+    # transient 503s instead of a raw traceback.
+    "google-genai>=1.0.0",
     "faiss-cpu>=1.8.0",
     "pandas>=2.2.0",
     "python-dotenv>=1.0.0",
@@ -69,3 +74,4 @@ extend-select = [
 # fire is itself an error (RUF100). A per-file-ignore is inert either way.
 "scripts/*.py" = ["E402"]
 "app/streamlit_app.py" = ["E402"]
+"tests/test_streamlit_app.py" = ["E402"]
