@@ -78,8 +78,12 @@ with a short justification:
 ```
 
 A `--retriever {dense,bm25,hybrid}` flag selects which retrieval strategy
-runs upstream of the LLM. Hybrid is the recommended default for production
-use; dense matches the original thesis baseline.
+runs upstream of the LLM; dense matches the original thesis baseline. Hybrid
+is the sensible default for real catalogues, where queries mix rare tool
+names with loose descriptive language — but note that on this repo's
+synthetic benchmark **BM25 scores highest**, for reasons examined in
+[Results](#results). The flag exists so that claim stays testable rather
+than assumed.
 
 Design choices worth calling out:
 
@@ -231,10 +235,89 @@ Outputs `output/eval_report.json` (full per-employee detail) and
 
 ## Results
 
-> Baseline numbers from running `scripts/run_eval.py` against the synthetic
-> dataset will be filled in here once the harness has been run end-to-end.
-> Numbers shift slightly across LLM-rerank invocations because the chat
-> model is sampled at `temperature=0.2`.
+Measured on the 25 synthetic employees against the 37-item catalogue, using
+`gemini-embedding-2` and `gemini-flash-latest`. Reproduce with
+`python scripts/run_eval.py --retriever {dense,bm25,hybrid} [--judge]`.
+
+### Retrieval
+
+Every relevance label comes from the skill-overlap rule described above, so
+the threshold governs how many employees have labels at all. Both settings
+are reported because the conclusion should not rest on one arbitrary cutoff:
+
+**`MIN_SKILL_OVERLAP = 1`** — all 25 employees labeled (mean 5.2 relevant items):
+
+| Retriever | recall@10 | MRR@10 | precision@10 |
+| --------- | --------- | ------ | ------------ |
+| BM25      | **0.880** | **0.960** | **0.408** |
+| Dense     | 0.714     | 0.913  | 0.328        |
+| Hybrid    | 0.839     | 0.950  | 0.376        |
+
+**`MIN_SKILL_OVERLAP = 2`** (the default) — only 8 of 25 employees labeled,
+scored over that subset:
+
+| Retriever | recall@10 | MRR@10 | precision@10 |
+| --------- | --------- | ------ | ------------ |
+| BM25      | **1.000** | **0.938** | **0.125** |
+| Dense     | 0.875     | 0.812  | 0.113        |
+| Hybrid    | **1.000** | 0.844  | **0.125**    |
+
+**BM25 wins on every metric at both thresholds — hybrid does not beat it.**
+
+That is the opposite of what this project set out to show, and it is reported
+as measured. The likely reason is a confound rather than a fact about
+retrieval: relevance is *defined* as overlapping skill tokens, and matching
+literal tokens is precisely what BM25 optimizes. The benchmark rewards the
+lexical retriever by construction, so this result does not establish that
+BM25 is the better choice in general — only that it wins the game these
+labels describe. Hybrid does reliably recover the recall dense loses
+(0.839 vs 0.714), which is the behavior RRF is meant to provide.
+
+### End-to-end (hybrid retrieval + LLM re-ranking)
+
+| Metric | Value |
+| ------ | ----- |
+| Rule-based precision@5 | 0.032 |
+| LLM-as-judge mean score (0–1) | 0.810 |
+
+Those two disagree sharply, and the disagreement is the most useful thing the
+harness produced. Judge ratings across all 125 recommendations (25 employees
+x top-5):
+
+| Rating | Count | Share |
+| ------ | ----- | ----- |
+| highly relevant   | 60 | 48.0% |
+| relevant          | 60 | 48.0% |
+| somewhat relevant | 5  | 4.0%  |
+| not relevant      | 0  | 0.0%  |
+
+**96% rated relevant or better; none rated irrelevant.** Split by whether the
+rule-based labels considered an employee to have any relevant content at all:
+
+| Employee group | LLM judge | Rule-based precision@5 |
+| -------------- | --------- | ---------------------- |
+| Has labels (n=8)  | 0.780 | 0.100 |
+| No labels (n=17)  | 0.824 | **0.000 — by construction** |
+
+For 17 of 25 employees the rule finds no relevant course in the catalogue, so
+their precision@5 can only ever be zero no matter what the system returns.
+The judge, which never consults those labels, rates the same recommendations
+0.824. The 0.032 figure is therefore measuring the sparsity of the labels
+rather than the quality of the output.
+
+### What to take from this
+
+The rule-based labels are cheap, transparent, and auditable, which is why
+they are here — but they are too sparse and too lexical to referee this
+system on their own. The honest summary is that retrieval surfaces relevant
+material reliably, the LLM re-ranker produces recommendations an independent
+model judges relevant 96% of the time, and the rule-based precision figure
+should not be read as a quality score. A stronger benchmark would need
+human-curated labels, which is out of scope for a synthetic portfolio dataset.
+
+> Re-running shifts these numbers slightly: the chat model is sampled at
+> `temperature=0.2`, and `gemini-flash-latest` is an alias Google repoints at
+> its current flash model.
 
 ## Demo UI
 
