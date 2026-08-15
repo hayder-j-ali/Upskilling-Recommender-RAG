@@ -25,6 +25,17 @@ import pandas as pd
 import streamlit as st
 from google.genai.errors import APIError
 
+# Reaches into a private module (`_common`) because langchain_google_genai
+# doesn't re-export this at the package root. Necessary: GoogleGenerativeAIEmbeddings
+# (used by retrieve(), below) catches the real google.genai.errors.APIError
+# internally and re-raises this instead — it is NOT a subclass of APIError,
+# so without also catching it here, an error during retrieval slips past the
+# `except APIError` guard below and crashes the app with a raw traceback.
+# ChatGoogleGenerativeAI (used by rerank_with_llm) does not do this — it lets
+# the original APIError propagate — which is why this gap wasn't caught until
+# an error happened to land on the embeddings side of the pipeline.
+from langchain_google_genai._common import GoogleGenerativeAIError
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from learning_rec.config import (
@@ -33,7 +44,9 @@ from learning_rec.config import (
     INDEX_DIR,
     NUM_RECOMMENDATIONS,
     TOP_K,
+    shadowed_dotenv_vars,
 )
+from learning_rec.llm_utils import api_error_guidance
 from learning_rec.recommender import rerank_with_llm, retrieve
 from learning_rec.retrieval import build_retriever
 from learning_rec.retrieval.factory import RetrieverKind
@@ -124,6 +137,26 @@ if _needs_api_key(retriever_kind, use_rerank):
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
             "offline demo."
         )
+    # Surfaced before anything else: when a shell export shadows .env, every
+    # other diagnostic misleads, because edits to .env have no effect at all.
+    _shadowed = shadowed_dotenv_vars()
+    if _shadowed:
+        st.sidebar.warning(
+            f"{', '.join(f'`{n}`' for n in _shadowed)} is set in your shell "
+            "and overrides `.env`, so your `.env` value is being ignored. "
+            "If authentication fails, this is the first thing to check — run "
+            "`echo $GOOGLE_API_KEY` in the terminal you launched from, then "
+            "`unset GOOGLE_API_KEY` and restart."
+        )
+
+    # Deliberately no key-format validation here. An earlier version warned
+    # when the key did not start with `AIza`, on the assumption that was the
+    # Gemini key format. It is the *legacy* format: AI Studio now issues
+    # service-account-bound "auth keys" (`AQ.` prefix) by default, and
+    # standard `AIza` keys are slated for rejection in September 2026. The
+    # check therefore flagged correct, current keys as suspect. Prefix
+    # sniffing is the wrong tool — the API is the only authority on whether
+    # a credential works, and its errors are handled where the calls happen.
 else:
     st.sidebar.success("Running fully offline — no API calls on this click.")
 
@@ -184,19 +217,14 @@ with results_col:
                     "`python scripts/build_index.py --reset` first."
                 )
                 st.stop()
-            except APIError as e:
-                # Covers both transient server errors (503 — Gemini under
-                # high demand) and client errors (429 rate limit, bad key).
-                # The button re-runs this block on the next click, so a
-                # clean stop here plus a retry hint is enough recovery —
-                # no need for app-level retry logic on top of the client's.
-                st.error(
-                    f"Gemini API error ({e.code} {e.status}): {e.message}\n\n"
-                    "This is usually transient. Wait a few seconds and click "
-                    "**Generate recommendations** again — or switch to "
-                    "**bm25** with **LLM re-rank** off for an offline demo "
-                    "that doesn't depend on Gemini's availability."
-                )
+            except (APIError, GoogleGenerativeAIError) as e:
+                # Guidance is derived from the error itself rather than
+                # hardcoded: auth failures, rate limits and genuine outages
+                # need opposite advice, and telling someone to "wait and
+                # retry" a 401 sends them in circles. See
+                # learning_rec.llm_utils.classify_api_error.
+                detail = f"{e.code} {e.status}: {e.message}" if isinstance(e, APIError) else str(e)
+                st.error(f"Gemini API error — {detail}\n\n{api_error_guidance(e)}")
                 st.stop()
 
             if use_rerank:

@@ -21,6 +21,7 @@ import pytest
 streamlit = pytest.importorskip("streamlit")  # skip if streamlit not installed
 
 from google.genai.errors import APIError
+from langchain_google_genai._common import GoogleGenerativeAIError
 from streamlit.testing.v1 import AppTest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -38,12 +39,11 @@ def test_streamlit_app_imports():
 
 
 class TestApiErrorHandling:
-    """Regression test for a real incident: Gemini returned a 503 ("high
-    demand") mid-demo, which crashed the app into a raw traceback because
-    `rerank_with_llm()`'s call site had no exception handling. Reproduces
-    the exact error shape from that incident via a mock — no live API call,
-    so this runs offline in CI — and asserts the app now shows a clean,
-    actionable message instead of crashing.
+    """Regression tests for two real incidents where a Gemini API error
+    crashed the app into a raw traceback instead of a clean message.
+    Reproduces each error shape via a mock — no live API call, so these run
+    offline in CI — and asserts the app shows an actionable message instead
+    of crashing.
     """
 
     def test_transient_503_shows_clean_message_not_a_crash(self, monkeypatch):
@@ -81,3 +81,47 @@ class TestApiErrorHandling:
         error_text = " ".join(e.value for e in at.error)
         assert "503" in error_text
         assert "again" in error_text.lower()  # retry guidance is present
+
+    def test_embeddings_auth_error_shows_clean_message_not_a_crash(self, monkeypatch):
+        """Second incident: a transient 401 (ACCESS_TOKEN_TYPE_UNSUPPORTED)
+        on the embeddings endpoint that did not reproduce on retry with the
+        same key — a Google-side hiccup, not a real credential problem.
+
+        `GoogleGenerativeAIEmbeddings` (used by `retrieve()`, hit regardless
+        of which retriever is selected once dense/hybrid needs an embedding)
+        catches the real `google.genai.errors.APIError` internally and
+        re-raises `GoogleGenerativeAIError` instead — NOT a subclass of
+        `APIError` — so it slipped past the `except APIError` handler added
+        for the first incident and crashed the app anyway.
+        """
+        monkeypatch.setenv("GOOGLE_API_KEY", "fake-key-for-test")
+
+        # Matches the real wrapped-message shape: langchain_google_genai's
+        # embeddings code does `f"Error embedding content ({e.status}): {e}"`.
+        fake_401 = GoogleGenerativeAIError(
+            "Error embedding content (UNAUTHENTICATED): 401 UNAUTHENTICATED. "
+            "{'error': {'code': 401, 'message': 'Request had invalid "
+            "authentication credentials. Expected OAuth 2 access token, "
+            "login cookie or other valid authentication credential.', "
+            "'status': 'UNAUTHENTICATED'}}"
+        )
+
+        def raise_401(*_args, **_kwargs):
+            raise fake_401
+
+        with patch.object(recommender_module, "retrieve", side_effect=raise_401):
+            at = AppTest.from_file(str(APP_PATH))
+            at.run()
+            # Any retriever kind reaches retrieve(); bm25 keeps this offline
+            # since we never actually build a real BM25 index either.
+            at.sidebar.radio[0].set_value("bm25").run()
+            at.button[0].click().run()
+
+        assert not at.exception, "app crashed instead of handling the API error"
+        error_text = " ".join(e.value for e in at.error)
+        assert "401" in error_text
+        # A wrong credential never fixes itself, so this must NOT tell the
+        # user to wait and retry (the advice a 503 gets) — it has to point
+        # at the credential instead.
+        assert "this specific endpoint" in error_text
+        assert "AIza" not in error_text  # never steer users to the legacy format
