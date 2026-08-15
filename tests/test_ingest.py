@@ -2,7 +2,7 @@
 
 These tests deliberately exercise only the offline path — no API calls.
 The embedding/index build is covered by manual smoke runs documented in the
-README, not CI (would require an OpenAI key and burn quota on every push).
+README, not CI (would require a Gemini API key and burn quota on every push).
 """
 
 from __future__ import annotations

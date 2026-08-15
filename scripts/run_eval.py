@@ -7,7 +7,7 @@ Examples:
     # cheap smoke run: 3 employees, retrieval only (skip rerank)
     python scripts/run_eval.py --limit 3 --no-rerank
 
-    # full eval with LLM-as-judge (extra OpenAI calls)
+    # full eval with LLM-as-judge (extra Gemini calls)
     python scripts/run_eval.py --judge
 """
 
@@ -51,7 +51,7 @@ def main() -> None:
     parser.add_argument(
         "--judge",
         action="store_true",
-        help="Also run LLM-as-judge on the reranked top-N (extra OpenAI calls).",
+        help="Also run LLM-as-judge on the reranked top-N (extra Gemini calls).",
     )
     args = parser.parse_args()
 
