@@ -2,7 +2,7 @@
 
 Three concrete retrievers, all conforming to the `Retriever` protocol:
 
-- `DenseRetriever` — semantic search via FAISS + OpenAI embeddings (the
+- `DenseRetriever` — semantic search via FAISS + Gemini embeddings (the
   thesis baseline).
 - `BM25Retriever` — sparse lexical search over the same corpus. Catches
   exact technical-term matches (e.g. "Kubernetes", "dbt") that dense

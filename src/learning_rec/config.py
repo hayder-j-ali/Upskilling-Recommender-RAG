@@ -17,8 +17,15 @@ OUTPUT_DIR = Path(os.getenv("OUTPUT_DIR", PROJECT_ROOT / "output"))
 EMPLOYEES_FILE = Path(os.getenv("EMPLOYEES_FILE", DATA_DIR / "employees.csv"))
 CONTENT_FILE = Path(os.getenv("CONTENT_FILE", DATA_DIR / "learning_content.csv"))
 
-EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
+# Defaults target the Gemini API (a GOOGLE_API_KEY, not an OpenAI key — see
+# .env.example). Verified live against the ListModels endpoint, not just
+# docs — Google's model ids and aliases churn faster than most providers'.
+# `gemini-flash-latest` is an alias Google repoints at their current
+# recommended flash model, trading a small amount of run-to-run eval
+# reproducibility for not going stale the way a pinned version id would.
+# Pin CHAT_MODEL to a dated version instead if you need exact repeatability.
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "models/gemini-embedding-2")
+CHAT_MODEL = os.getenv("CHAT_MODEL", "gemini-flash-latest")
 TEMPERATURE = float(os.getenv("TEMPERATURE", "0.2"))
 TOP_K = int(os.getenv("TOP_K", "10"))
 NUM_RECOMMENDATIONS = int(os.getenv("NUM_RECOMMENDATIONS", "5"))

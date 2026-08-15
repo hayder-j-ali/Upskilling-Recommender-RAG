@@ -6,7 +6,7 @@ signal of whether the LLM rerank stage is producing genuinely useful results,
 independent of the rule-based ground truth in `ground_truth.py`.
 
 This is intentionally separated from IR metrics — it answers a different
-question ("is this a good recommendation?") and burns more OpenAI tokens, so
+question ("is this a good recommendation?") and burns more Gemini tokens, so
 it's opt-in via `scripts/run_eval.py --judge`.
 """
 
@@ -15,9 +15,10 @@ from __future__ import annotations
 import json
 
 import pandas as pd
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from learning_rec.config import CHAT_MODEL, TEMPERATURE
+from learning_rec.llm_utils import extract_text, strip_markdown_fences
 
 SCALE = {
     "highly_relevant": 1.0,
@@ -42,11 +43,17 @@ Return ONLY a JSON object:
 
 
 def judge_recommendation(
-    emp: pd.Series, recommendation: dict, llm: ChatOpenAI | None = None
+    emp: pd.Series, recommendation: dict, llm: ChatGoogleGenerativeAI | None = None
 ) -> dict:
     """Judge one recommendation. Returns {"rating", "justification", "score"}."""
     if llm is None:
-        llm = ChatOpenAI(model=CHAT_MODEL, temperature=TEMPERATURE, max_tokens=200)
+        # thinking_budget=0 — see rerank_with_llm() in recommender.py for why.
+        llm = ChatGoogleGenerativeAI(
+            model=CHAT_MODEL,
+            temperature=TEMPERATURE,
+            max_output_tokens=200,
+            thinking_budget=0,
+        )
 
     response = llm.invoke(
         [
@@ -63,7 +70,7 @@ def judge_recommendation(
         ]
     )
 
-    raw = response.content
+    raw = strip_markdown_fences(extract_text(response))
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError:

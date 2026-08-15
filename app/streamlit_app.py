@@ -8,7 +8,7 @@ Run:
     streamlit run app/streamlit_app.py
 
 Prereqs:
-- `OPENAI_API_KEY` in environment (or .env) — needed for the dense and
+- `GOOGLE_API_KEY` in environment (or .env) — needed for the dense and
   hybrid retrievers and for the LLM rerank stage. The BM25 retrieval-only
   path works without one.
 - `python scripts/build_index.py --reset` must have been run at least once
@@ -63,11 +63,11 @@ def get_retriever(kind: RetrieverKind):
     return build_retriever(kind, index_dir=INDEX_DIR, content_path=CONTENT_FILE)
 
 
-def _has_openai_key() -> bool:
-    return bool(os.getenv("OPENAI_API_KEY"))
+def _has_google_key() -> bool:
+    return bool(os.getenv("GOOGLE_API_KEY"))
 
 
-def _needs_openai(kind: RetrieverKind, use_rerank: bool) -> bool:
+def _needs_api_key(kind: RetrieverKind, use_rerank: bool) -> bool:
     return kind != "bm25" or use_rerank
 
 
@@ -89,9 +89,10 @@ emp = employees[employees.employee_id == emp_id].iloc[0]
 retriever_kind: RetrieverKind = st.sidebar.radio(
     "Retrieval strategy",
     options=["dense", "bm25", "hybrid"],
-    index=2 if _has_openai_key() else 1,
+    index=2 if _has_google_key() else 1,
     help=(
-        "**dense** — FAISS over OpenAI embeddings (the thesis baseline).  \n"
+        "**dense** — FAISS over Gemini embeddings (the thesis baseline, "
+        "ported from OpenAI).  \n"
         "**bm25** — sparse lexical scoring, no API calls.  \n"
         "**hybrid** — Reciprocal Rank Fusion of dense + BM25 (recommended)."
     ),
@@ -99,11 +100,11 @@ retriever_kind: RetrieverKind = st.sidebar.radio(
 
 use_rerank = st.sidebar.checkbox(
     "LLM re-rank with reasons",
-    value=_has_openai_key(),
+    value=_has_google_key(),
     help=(
-        "Calls gpt-4o-mini to re-rank and explain each pick. Adds a few "
-        "cents per click. Uncheck to see raw retrieval candidates only "
-        "(no chat-model calls)."
+        f"Calls {os.getenv('CHAT_MODEL', 'gemini-2.0-flash')} to re-rank and "
+        "explain each pick. Free under Gemini's free tier for light use. "
+        "Uncheck to see raw retrieval candidates only (no chat-model calls)."
     ),
 )
 
@@ -115,10 +116,10 @@ n_recs = (
 )
 
 # Cost / prereq hint
-if _needs_openai(retriever_kind, use_rerank):
-    if not _has_openai_key():
+if _needs_api_key(retriever_kind, use_rerank):
+    if not _has_google_key():
         st.sidebar.error(
-            "OPENAI_API_KEY not set. Either set it in your environment / "
+            "GOOGLE_API_KEY not set. Either set it in your environment / "
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
             "offline demo."
         )
@@ -160,9 +161,9 @@ with results_col:
             "recommendations**. Try the same employee with different retrieval "
             "strategies to see how the picks change."
         )
-    elif _needs_openai(retriever_kind, use_rerank) and not _has_openai_key():
+    elif _needs_api_key(retriever_kind, use_rerank) and not _has_google_key():
         st.error(
-            "This configuration needs an OpenAI API key. Set `OPENAI_API_KEY` "
+            "This configuration needs a Gemini API key. Set `GOOGLE_API_KEY` "
             "in your environment or `.env`, or switch to **bm25** and uncheck "
             "**LLM re-rank** for a fully offline demo."
         )

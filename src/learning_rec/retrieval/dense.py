@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from langchain_community.vectorstores import FAISS
-from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from learning_rec.config import EMBEDDING_MODEL, INDEX_DIR
 from learning_rec.retrieval.base import Candidate
@@ -19,7 +19,7 @@ class DenseRetriever:
 
     @classmethod
     def from_index(cls, index_dir: Path = INDEX_DIR) -> DenseRetriever:
-        embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL, chunk_size=200)
+        embeddings = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL)
         vectordb = FAISS.load_local(
             str(index_dir),
             embeddings,

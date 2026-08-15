@@ -18,7 +18,7 @@ import pandas as pd
 import tqdm
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
 from learning_rec.config import CONTENT_FILE, EMBEDDING_MODEL, INDEX_DIR
 
@@ -89,7 +89,7 @@ def build_vector_store(
     df = load_content(content_path)
     docs = build_documents(df)
 
-    embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL, chunk_size=200)
+    embeddings = GoogleGenerativeAIEmbeddings(model=EMBEDDING_MODEL)
 
     if reset and index_dir.exists():
         for p in index_dir.glob("*"):

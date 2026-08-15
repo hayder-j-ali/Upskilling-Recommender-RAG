@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 
 import pandas as pd
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from learning_rec.config import (
     CHAT_MODEL,
@@ -21,6 +21,7 @@ from learning_rec.config import (
     TEMPERATURE,
     TOP_K,
 )
+from learning_rec.llm_utils import extract_text, strip_markdown_fences
 from learning_rec.prompts import BASE_SYSTEM_PROMPT
 from learning_rec.retrieval.base import Candidate, Retriever
 
@@ -53,12 +54,26 @@ def retrieve(emp: pd.Series, retriever: Retriever, k: int = TOP_K) -> list[Candi
 def rerank_with_llm(
     emp: pd.Series,
     candidates: list[Candidate],
-    llm: ChatOpenAI | None = None,
+    llm: ChatGoogleGenerativeAI | None = None,
     n: int = NUM_RECOMMENDATIONS,
 ) -> list[dict]:
     """Ask the LLM to re-rank the candidate list to the top-N with reasons."""
     if llm is None:
-        llm = ChatOpenAI(model=CHAT_MODEL, temperature=TEMPERATURE, max_tokens=512)
+        # thinking_budget=0: newer Gemini flash models reason by default,
+        # which can consume the max_output_tokens budget on internal
+        # reasoning before emitting any visible text — the model then
+        # returns truncated (invalid) JSON. This task is a straightforward
+        # rerank/classify, not something that benefits from extended
+        # reasoning, so disabling it is a simplification, not a workaround.
+        # max_output_tokens=1024, not 512: Gemini's reasons run more
+        # verbose than gpt-4o-mini's did on the same prompt; 512 clipped
+        # a real 5-item response mid-array in testing.
+        llm = ChatGoogleGenerativeAI(
+            model=CHAT_MODEL,
+            temperature=TEMPERATURE,
+            max_output_tokens=1024,
+            thinking_budget=0,
+        )
 
     response = llm.invoke(
         [
@@ -76,7 +91,7 @@ def rerank_with_llm(
         ]
     )
 
-    raw = response.content
+    raw = strip_markdown_fences(extract_text(response))
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -91,7 +106,7 @@ def rerank_with_llm(
 def recommend(
     emp: pd.Series,
     retriever: Retriever,
-    llm: ChatOpenAI | None = None,
+    llm: ChatGoogleGenerativeAI | None = None,
     top_k: int = TOP_K,
     n: int = NUM_RECOMMENDATIONS,
 ) -> list[dict]:

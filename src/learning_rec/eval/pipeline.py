@@ -194,7 +194,7 @@ def _markdown_summary(report: EvalReport) -> str:
         f"- top_k (retrieval): {cfg['top_k']}",
         f"- n_recs (rerank): {cfg['n_recs']}",
         "",
-        "## Retrieval (dense, baseline)",
+        f"## Retrieval ({cfg['retriever']})",
         "",
         "| Metric | Mean |",
         "| --- | --- |",

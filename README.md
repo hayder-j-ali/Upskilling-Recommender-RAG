@@ -57,8 +57,8 @@ with a short justification:
                 ▼                                         ▼
       ┌──────────────────┐                       ┌──────────────────┐
       │  Dense:  FAISS   │                       │  Sparse:  BM25   │
-      │  text-embedding- │                       │  (rank-bm25)     │
-      │     3-small      │                       │                  │
+      │      Gemini      │                       │  (rank-bm25)     │
+      │   embedding-2    │                       │                  │
       └────────┬─────────┘                       └────────┬─────────┘
                │  top-30 by cosine                        │  top-30 by BM25
                └────────────────────┬────────────────────┘
@@ -73,7 +73,7 @@ with a short justification:
                             ┌──────────────┐
                             │   LLM        │
                             │  re-ranker   │ →  top-5 JSON with reasons
-                            │ (gpt-4o-mini)│
+                            │(gemini-flash)│
                             └──────────────┘
 ```
 
@@ -108,7 +108,7 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 cp .env.example .env
-# edit .env to add your OPENAI_API_KEY
+# edit .env to add your GOOGLE_API_KEY (get one free at aistudio.google.com/apikey)
 
 # (re)generate synthetic data — already committed, but you can regenerate
 python scripts/generate_synthetic_data.py
@@ -134,9 +134,9 @@ All configuration is environment-driven via `.env`:
 
 | Variable              | Default                    | Purpose                            |
 | --------------------- | -------------------------- | ---------------------------------- |
-| `OPENAI_API_KEY`      | _(required)_               | OpenAI API access                  |
-| `CHAT_MODEL`          | `gpt-4o-mini`              | Re-ranker model                    |
-| `EMBEDDING_MODEL`     | `text-embedding-3-small`   | Embedding model                    |
+| `GOOGLE_API_KEY`      | _(required)_               | Gemini API access                  |
+| `CHAT_MODEL`          | `gemini-flash-latest`      | Re-ranker model                    |
+| `EMBEDDING_MODEL`     | `models/gemini-embedding-2`| Embedding model                    |
 | `TEMPERATURE`         | `0.2`                      | Re-ranker sampling temperature     |
 | `TOP_K`               | `10`                       | Candidates retrieved before rerank |
 | `NUM_RECOMMENDATIONS` | `5`                        | Final results returned per user    |
@@ -158,7 +158,7 @@ Upskilling-Recommender-RAG/
 │   ├── prompts.py                 # LLM system prompts
 │   ├── retrieval/
 │   │   ├── base.py                # Retriever protocol + Candidate shape
-│   │   ├── dense.py               # FAISS / OpenAI-embeddings retriever
+│   │   ├── dense.py               # FAISS / Gemini-embeddings retriever
 │   │   ├── bm25.py                # in-memory BM25 retriever
 │   │   ├── hybrid.py              # RRF fusion
 │   │   └── factory.py             # build_retriever("dense"|"bm25"|"hybrid")
@@ -216,13 +216,13 @@ python scripts/run_eval.py
 # cheap smoke run: 3 employees, retrieval only (skips chat-model calls)
 python scripts/run_eval.py --limit 3 --no-rerank
 
-# BM25 retrieval-only — fully offline, no OpenAI calls at all
+# BM25 retrieval-only — fully offline, no Gemini calls at all
 python scripts/run_eval.py --retriever bm25 --no-rerank
 
 # compare hybrid retrieval (BM25 + dense) end-to-end
 python scripts/run_eval.py --retriever hybrid
 
-# add LLM-as-judge (extra OpenAI calls)
+# add LLM-as-judge (extra Gemini calls)
 python scripts/run_eval.py --judge
 ```
 
@@ -249,7 +249,7 @@ streamlit run app/streamlit_app.py
 ```
 
 Opens at <http://localhost:8501>. The app adapts its defaults to your
-environment: with no `OPENAI_API_KEY` set it starts on **bm25** with
+environment: with no `GOOGLE_API_KEY` set it starts on **bm25** with
 re-ranking off, so the demo runs fully offline with no API calls.
 
 ![Streamlit demo screenshot](docs/screenshot.png)
@@ -279,6 +279,11 @@ my Master's thesis. The original was developed against a corporate Learning
 Experience Platform; this version replaces all proprietary data, paths, and
 naming with synthetic equivalents. The recommender logic, prompt design, and
 evaluation methodology are unchanged from the thesis.
+
+One deliberate deviation: the thesis used OpenAI's API (`text-embedding-3-small`
++ `gpt-3.5-turbo`). This public version runs on Gemini instead — its free tier
+means anyone cloning the repo can run the full demo without setting up billing,
+which matters more for a portfolio project meant to be tried, not just read.
 
 ## License
 
