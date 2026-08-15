@@ -254,9 +254,11 @@ re-ranking off, so the demo runs fully offline with no API calls.
 
 ![Streamlit demo screenshot](docs/screenshot.png)
 
-*Above: offline mode — BM25 retrieval with LLM re-ranking disabled, showing
-raw retriever scores. With a key set and re-ranking on, each card instead
-carries the model's one-line justification for the pick.*
+*Above: hybrid retrieval with LLM re-ranking on. Each card carries the
+model's one-line justification, tied back to a specific skill, job
+requirement, or interest from the profile on the left. Unchecking
+**LLM re-rank** shows the raw retriever scores instead, and pairing that
+with **bm25** runs the demo fully offline with no API calls.*
 
 ## Development
 
