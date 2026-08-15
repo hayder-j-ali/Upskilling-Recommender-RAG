@@ -26,16 +26,16 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from learning_rec.config import (  # noqa: E402
+from learning_rec.config import (
     CONTENT_FILE,
     EMPLOYEES_FILE,
     INDEX_DIR,
     NUM_RECOMMENDATIONS,
     TOP_K,
 )
-from learning_rec.recommender import rerank_with_llm, retrieve  # noqa: E402
-from learning_rec.retrieval import build_retriever  # noqa: E402
-from learning_rec.retrieval.factory import RetrieverKind  # noqa: E402
+from learning_rec.recommender import rerank_with_llm, retrieve
+from learning_rec.retrieval import build_retriever
+from learning_rec.retrieval.factory import RetrieverKind
 
 # ---------------------------------------------------------------------------
 # Page setup

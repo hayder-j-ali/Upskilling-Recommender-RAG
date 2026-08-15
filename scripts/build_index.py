@@ -13,8 +13,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from learning_rec.config import CONTENT_FILE, INDEX_DIR  # noqa: E402
-from learning_rec.ingest import build_vector_store  # noqa: E402
+from learning_rec.config import CONTENT_FILE, INDEX_DIR
+from learning_rec.ingest import build_vector_store
 
 
 def main() -> None:
