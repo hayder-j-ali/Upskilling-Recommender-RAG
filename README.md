@@ -176,6 +176,7 @@ Upskilling-Recommender-RAG/
 │   ├── ingest.py                  # catalogue -> FAISS
 │   ├── recommender.py             # retrieve(), rerank_with_llm(), recommend()
 │   ├── prompts.py                 # LLM system prompts
+│   ├── vector_store.py            # FAISS index: build, save/load, search
 │   ├── index_meta.py              # records/verifies which model built the index
 │   ├── llm_utils.py               # response parsing + API-error classification
 │   ├── retrieval/
@@ -197,7 +198,7 @@ Upskilling-Recommender-RAG/
 │   ├── recommend.py               # CLI for batch recommendations
 │   └── run_eval.py                # CLI for evaluation
 ├── output/                        # recommendation JSON (gitignored)
-├── vector_store/                  # FAISS artifacts (gitignored)
+├── vector_store/                  # index.faiss + documents.json + index_meta.json (gitignored)
 ├── requirements.txt
 ├── .env.example
 └── README.md
