@@ -248,15 +248,13 @@ pip install -e ".[ui]"
 streamlit run app/streamlit_app.py
 ```
 
-Opens at <http://localhost:8501>. The app adapts its defaults to your
-environment: with no `OPENAI_API_KEY` set it starts on **bm25** with
-re-ranking off, so the demo runs fully offline with no API calls.
+Opens at <http://localhost:8501>. Picking **bm25** with **LLM re-rank
+unchecked** runs the demo fully offline (no OpenAI calls).
 
 ![Streamlit demo screenshot](docs/screenshot.png)
 
-*Above: offline mode — BM25 retrieval with LLM re-ranking disabled, showing
-raw retriever scores. With a key set and re-ranking on, each card instead
-carries the model's one-line justification for the pick.*
+> If the screenshot above is missing, run the app once and capture it —
+> there's no committed image yet, just the placeholder.
 
 ## Development
 
