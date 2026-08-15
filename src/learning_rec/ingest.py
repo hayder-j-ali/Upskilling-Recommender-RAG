@@ -20,6 +20,7 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 
+from learning_rec import index_meta
 from learning_rec.config import CONTENT_FILE, EMBEDDING_MODEL, INDEX_DIR
 
 
@@ -98,4 +99,9 @@ def build_vector_store(
     vectordb = FAISS.from_documents(docs, embeddings)
     index_dir.mkdir(parents=True, exist_ok=True)
     vectordb.save_local(str(index_dir))
+    # Recorded so DenseRetriever can refuse an index built by a different
+    # model — see learning_rec.index_meta for why that check has to exist.
+    index_meta.write(
+        index_dir, embedding_model=EMBEDDING_MODEL, n_documents=len(docs)
+    )
     return vectordb

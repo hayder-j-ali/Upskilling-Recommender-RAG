@@ -148,6 +148,22 @@ All configuration is environment-driven via `.env`:
 | `INDEX_DIR`           | `./vector_store`           | Where the FAISS index is written   |
 | `OUTPUT_DIR`          | `./output`                 | Where recommendations are written  |
 
+> **Changing `EMBEDDING_MODEL` requires rebuilding the index.** The build
+> records which model produced the vectors, and the dense retriever refuses
+> to load an index built by a different one:
+>
+> ```
+> The index at ./vector_store was built with 'models/gemini-embedding-2'
+> but EMBEDDING_MODEL is 'models/gemini-embedding-001'. …
+> Rebuild it with:  python scripts/build_index.py --reset
+> ```
+>
+> The check exists because this failure is otherwise silent. Every Gemini
+> embedding model here emits 3072 dimensions, so mismatched vectors still
+> compare cleanly and FAISS returns a confidently mis-ordered list rather
+> than an error — the recommendations look plausible and are wrong. A
+> dimension mismatch would at least crash.
+
 ## Project structure
 
 ```
@@ -160,6 +176,8 @@ Upskilling-Recommender-RAG/
 │   ├── ingest.py                  # catalogue -> FAISS
 │   ├── recommender.py             # retrieve(), rerank_with_llm(), recommend()
 │   ├── prompts.py                 # LLM system prompts
+│   ├── index_meta.py              # records/verifies which model built the index
+│   ├── llm_utils.py               # response parsing + API-error classification
 │   ├── retrieval/
 │   │   ├── base.py                # Retriever protocol + Candidate shape
 │   │   ├── dense.py               # FAISS / Gemini-embeddings retriever
