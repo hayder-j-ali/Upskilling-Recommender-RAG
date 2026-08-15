@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from google.genai.errors import APIError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
@@ -176,15 +177,29 @@ with results_col:
             try:
                 retriever = get_retriever(retriever_kind)
                 candidates = retrieve(emp, retriever, k=top_k)
+                results = rerank_with_llm(emp, candidates, n=n_recs) if use_rerank else None
             except FileNotFoundError as e:
                 st.error(
                     f"Could not load the index ({e}). Run "
                     "`python scripts/build_index.py --reset` first."
                 )
                 st.stop()
+            except APIError as e:
+                # Covers both transient server errors (503 — Gemini under
+                # high demand) and client errors (429 rate limit, bad key).
+                # The button re-runs this block on the next click, so a
+                # clean stop here plus a retry hint is enough recovery —
+                # no need for app-level retry logic on top of the client's.
+                st.error(
+                    f"Gemini API error ({e.code} {e.status}): {e.message}\n\n"
+                    "This is usually transient. Wait a few seconds and click "
+                    "**Generate recommendations** again — or switch to "
+                    "**bm25** with **LLM re-rank** off for an offline demo "
+                    "that doesn't depend on Gemini's availability."
+                )
+                st.stop()
 
             if use_rerank:
-                results = rerank_with_llm(emp, candidates, n=n_recs)
                 for i, r in enumerate(results, start=1):
                     with st.container(border=True):
                         st.markdown(
