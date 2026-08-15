@@ -10,7 +10,12 @@ from __future__ import annotations
 
 from langchain_core.messages import AIMessage
 
-from learning_rec.llm_utils import extract_text, strip_markdown_fences
+from learning_rec.llm_utils import (
+    api_error_guidance,
+    classify_api_error,
+    extract_text,
+    strip_markdown_fences,
+)
 
 
 class TestExtractText:
@@ -78,3 +83,85 @@ class TestStripMarkdownFences:
     def test_handles_multiline_json_inside_fence(self):
         raw = '```json\n[\n  {"a": 1},\n  {"b": 2}\n]\n```'
         assert strip_markdown_fences(raw) == '[\n  {"a": 1},\n  {"b": 2}\n]'
+
+
+class TestClassifyApiError:
+    """Error strings below are verbatim from real Gemini responses observed
+    while debugging this project, not invented — the classifier keys off
+    Google's `reason`/`status` fields, so fabricated samples would prove
+    nothing about the real behavior.
+    """
+
+    # Wrong *kind* of credential (an OAuth-style token where the Gemini
+    # Developer API wants an `AIza` key). Notably a 401 that chat accepts
+    # while the embeddings endpoint rejects it.
+    REAL_AUTH_ERROR = (
+        "Error embedding content (UNAUTHENTICATED): 401 UNAUTHENTICATED. "
+        "{'error': {'code': 401, 'message': 'Request had invalid "
+        "authentication credentials. Expected OAuth 2 access token, login "
+        "cookie or other valid authentication credential.', 'status': "
+        "'UNAUTHENTICATED', 'details': [{'reason': "
+        "'ACCESS_TOKEN_TYPE_UNSUPPORTED'}]}}"
+    )
+    # Well-formed but bogus `AIza` key — note Google reports this as 400
+    # INVALID_ARGUMENT, not 401, so matching on the code alone would miss it.
+    REAL_BAD_KEY_ERROR = (
+        "Error embedding content (INVALID_ARGUMENT): 400 INVALID_ARGUMENT. "
+        "{'error': {'code': 400, 'message': 'API key not valid. Please pass "
+        "a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': "
+        "[{'reason': 'API_KEY_INVALID'}]}}"
+    )
+    REAL_OVERLOAD_ERROR = (
+        "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'This model is "
+        "currently experiencing high demand. Spikes in demand are usually "
+        "temporary. Please try again later.', 'status': 'UNAVAILABLE'}}"
+    )
+    RATE_LIMIT_ERROR = (
+        "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'Quota "
+        "exceeded.', 'status': 'RESOURCE_EXHAUSTED'}}"
+    )
+
+    def test_wrong_credential_type_is_auth(self):
+        assert classify_api_error(Exception(self.REAL_AUTH_ERROR)) == "auth"
+
+    def test_invalid_api_key_is_auth_despite_400_status(self):
+        assert classify_api_error(Exception(self.REAL_BAD_KEY_ERROR)) == "auth"
+
+    def test_overload_is_transient(self):
+        assert classify_api_error(Exception(self.REAL_OVERLOAD_ERROR)) == "transient"
+
+    def test_quota_is_rate_limit(self):
+        assert classify_api_error(Exception(self.RATE_LIMIT_ERROR)) == "rate_limit"
+
+    def test_unrecognized_error_is_unknown(self):
+        assert classify_api_error(Exception("something else entirely")) == "unknown"
+
+
+class TestApiErrorGuidance:
+    def test_auth_error_does_not_advise_retrying(self):
+        """The bug this guards: a 401 was being reported as "usually
+        transient, wait and try again", which is the opposite of the truth —
+        a wrong credential never fixes itself.
+        """
+        msg = api_error_guidance(Exception(TestClassifyApiError.REAL_AUTH_ERROR))
+        assert "retrying will not help" in msg
+        assert "aistudio.google.com/apikey" in msg
+        assert "usually transient" not in msg
+
+    def test_transient_error_does_advise_retrying(self):
+        msg = api_error_guidance(Exception(TestClassifyApiError.REAL_OVERLOAD_ERROR))
+        assert "transient" in msg
+        assert "aistudio.google.com/apikey" not in msg
+
+    def test_rate_limit_mentions_quota(self):
+        msg = api_error_guidance(Exception(TestClassifyApiError.RATE_LIMIT_ERROR))
+        assert "rate limit" in msg or "quota" in msg
+
+    def test_every_class_offers_the_offline_fallback(self):
+        for err in (
+            TestClassifyApiError.REAL_AUTH_ERROR,
+            TestClassifyApiError.REAL_OVERLOAD_ERROR,
+            TestClassifyApiError.RATE_LIMIT_ERROR,
+            "totally unrecognized",
+        ):
+            assert "bm25" in api_error_guidance(Exception(err))

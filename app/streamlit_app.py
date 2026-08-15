@@ -45,6 +45,7 @@ from learning_rec.config import (
     NUM_RECOMMENDATIONS,
     TOP_K,
 )
+from learning_rec.llm_utils import api_error_guidance
 from learning_rec.recommender import rerank_with_llm, retrieve
 from learning_rec.retrieval import build_retriever
 from learning_rec.retrieval.factory import RetrieverKind
@@ -81,6 +82,11 @@ def _has_google_key() -> bool:
 
 def _needs_api_key(kind: RetrieverKind, use_rerank: bool) -> bool:
     return kind != "bm25" or use_rerank
+
+
+def _looks_like_api_key() -> bool:
+    """Gemini Developer API keys start with 'AIza'; OAuth tokens do not."""
+    return os.getenv("GOOGLE_API_KEY", "").startswith("AIza")
 
 
 # ---------------------------------------------------------------------------
@@ -134,6 +140,18 @@ if _needs_api_key(retriever_kind, use_rerank):
             "GOOGLE_API_KEY not set. Either set it in your environment / "
             ".env, or pick **bm25** + uncheck **LLM re-rank** for a fully "
             "offline demo."
+        )
+    elif not _looks_like_api_key():
+        # Caught before a click rather than after: a wrong-*type* credential
+        # can authenticate against chat while the embeddings endpoint rejects
+        # it with 401 ACCESS_TOKEN_TYPE_UNSUPPORTED, which reads like a
+        # server-side glitch and sends people chasing the wrong problem.
+        st.sidebar.warning(
+            "`GOOGLE_API_KEY` does not look like a Gemini API key (those "
+            "start with `AIza`). OAuth access tokens and keys from other "
+            "Google products are often rejected by the embeddings endpoint "
+            "even when chat works. Get one at "
+            "https://aistudio.google.com/apikey."
         )
 else:
     st.sidebar.success("Running fully offline — no API calls on this click.")
@@ -196,23 +214,13 @@ with results_col:
                 )
                 st.stop()
             except (APIError, GoogleGenerativeAIError) as e:
-                # Covers transient server errors (503 — Gemini under high
-                # demand), client errors (429 rate limit, bad key), and
-                # intermittent auth hiccups on the embeddings endpoint (seen
-                # in practice: a 401 ACCESS_TOKEN_TYPE_UNSUPPORTED that did
-                # not reproduce on retry with the same key and code — a
-                # transient backend issue, not a real credential problem).
-                # The button re-runs this block on the next click, so a
-                # clean stop here plus a retry hint is enough recovery —
-                # no need for app-level retry logic on top of the client's.
+                # Guidance is derived from the error itself rather than
+                # hardcoded: auth failures, rate limits and genuine outages
+                # need opposite advice, and telling someone to "wait and
+                # retry" a 401 sends them in circles. See
+                # learning_rec.llm_utils.classify_api_error.
                 detail = f"{e.code} {e.status}: {e.message}" if isinstance(e, APIError) else str(e)
-                st.error(
-                    f"Gemini API error — {detail}\n\n"
-                    "This is usually transient. Wait a few seconds and click "
-                    "**Generate recommendations** again — or switch to "
-                    "**bm25** with **LLM re-rank** off for an offline demo "
-                    "that doesn't depend on Gemini's availability."
-                )
+                st.error(f"Gemini API error — {detail}\n\n{api_error_guidance(e)}")
                 st.stop()
 
             if use_rerank:

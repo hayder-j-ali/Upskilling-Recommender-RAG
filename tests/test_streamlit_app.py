@@ -120,4 +120,8 @@ class TestApiErrorHandling:
         assert not at.exception, "app crashed instead of handling the API error"
         error_text = " ".join(e.value for e in at.error)
         assert "401" in error_text
-        assert "again" in error_text.lower()  # retry guidance is present
+        # A wrong credential never fixes itself, so this must NOT tell the
+        # user to wait and retry (the advice a 503 gets) — it has to point
+        # at the credential instead.
+        assert "retrying will not help" in error_text
+        assert "aistudio.google.com/apikey" in error_text
