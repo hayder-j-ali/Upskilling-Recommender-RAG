@@ -25,6 +25,17 @@ import pandas as pd
 import streamlit as st
 from google.genai.errors import APIError
 
+# Reaches into a private module (`_common`) because langchain_google_genai
+# doesn't re-export this at the package root. Necessary: GoogleGenerativeAIEmbeddings
+# (used by retrieve(), below) catches the real google.genai.errors.APIError
+# internally and re-raises this instead — it is NOT a subclass of APIError,
+# so without also catching it here, an error during retrieval slips past the
+# `except APIError` guard below and crashes the app with a raw traceback.
+# ChatGoogleGenerativeAI (used by rerank_with_llm) does not do this — it lets
+# the original APIError propagate — which is why this gap wasn't caught until
+# an error happened to land on the embeddings side of the pipeline.
+from langchain_google_genai._common import GoogleGenerativeAIError
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from learning_rec.config import (
@@ -184,14 +195,19 @@ with results_col:
                     "`python scripts/build_index.py --reset` first."
                 )
                 st.stop()
-            except APIError as e:
-                # Covers both transient server errors (503 — Gemini under
-                # high demand) and client errors (429 rate limit, bad key).
+            except (APIError, GoogleGenerativeAIError) as e:
+                # Covers transient server errors (503 — Gemini under high
+                # demand), client errors (429 rate limit, bad key), and
+                # intermittent auth hiccups on the embeddings endpoint (seen
+                # in practice: a 401 ACCESS_TOKEN_TYPE_UNSUPPORTED that did
+                # not reproduce on retry with the same key and code — a
+                # transient backend issue, not a real credential problem).
                 # The button re-runs this block on the next click, so a
                 # clean stop here plus a retry hint is enough recovery —
                 # no need for app-level retry logic on top of the client's.
+                detail = f"{e.code} {e.status}: {e.message}" if isinstance(e, APIError) else str(e)
                 st.error(
-                    f"Gemini API error ({e.code} {e.status}): {e.message}\n\n"
+                    f"Gemini API error — {detail}\n\n"
                     "This is usually transient. Wait a few seconds and click "
                     "**Generate recommendations** again — or switch to "
                     "**bm25** with **LLM re-rank** off for an offline demo "
