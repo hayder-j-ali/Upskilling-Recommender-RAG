@@ -46,6 +46,7 @@ from learning_rec.config import (
     TOP_K,
     shadowed_dotenv_vars,
 )
+from learning_rec.index_meta import IndexMetadataError
 from learning_rec.llm_utils import api_error_guidance
 from learning_rec.recommender import rerank_with_llm, retrieve
 from learning_rec.retrieval import build_retriever
@@ -216,6 +217,13 @@ with results_col:
                     f"Could not load the index ({e}). Run "
                     "`python scripts/build_index.py --reset` first."
                 )
+                st.stop()
+            except IndexMetadataError as e:
+                # The index was built by a different embedding model. Worth
+                # its own branch: the message already says exactly what to
+                # do, and this is the one failure here that would otherwise
+                # produce plausible-looking but wrong recommendations.
+                st.error(str(e))
                 st.stop()
             except (APIError, GoogleGenerativeAIError) as e:
                 # Guidance is derived from the error itself rather than
